@@ -197,6 +197,22 @@ async def on_message_delete(message):
         if message in message_list:
             message_list.remove(message)
 
+@bot.command(name="help", help="사용 가능한 명령어를 표시합니다.")
+async def help_command(ctx, command_name: str = None):
+    if command_name:
+        command = bot.get_command(command_name)
+        if command and command.help:
+            await ctx.send(f"**이!{command.name}** : {command.help}")
+        else:
+            await ctx.send(f"명령어 `{command_name}` 에 대한 설명이 없습니다.")
+        return
+    help_text = "**사용 가능한 명령어 목록**\n"
+    for cmd in bot.commands:
+        if not cmd.hidden and cmd.help:
+            help_text += f"- `이!{cmd.name}` : {cmd.help}\n"
+    await ctx.send(help_text)
+
+
 # ----------------------
 # 실행
 # ----------------------
