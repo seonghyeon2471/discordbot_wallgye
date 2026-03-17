@@ -184,11 +184,15 @@ async def skip(ctx):
 async def on_message(message):
     if message.author.bot:
         return
+
+    # 시참 메시지 처리
     if counting_active and TARGET_CHANNEL_ID and message.channel.id == TARGET_CHANNEL_ID:
         message_list.append(message)
         if len(message_list) % 4 == 0:
             await message.add_reaction("✅")
             reacted_messages.append(message)
+
+    # ⚡ 반드시 커맨드 처리
     await bot.process_commands(message)
 
 @bot.event
@@ -197,6 +201,9 @@ async def on_message_delete(message):
         if message in message_list:
             message_list.remove(message)
 
+#-------------------------
+# 도움말
+#-------------------------
 @bot.command(name="help", help="사용 가능한 명령어를 표시합니다.")
 async def help_command(ctx, command_name: str = None):
     if command_name:
