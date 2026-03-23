@@ -138,7 +138,14 @@ def play_next(ctx):
 
     url = song_queue.pop(0)
     ydl_opts = {
-    'format': 'bestaudio/best',
+    'format': 'bestaudio[ext=m4a]/bestaudio/best',
+    'noplaylist': True,
+    'quiet': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',
     'cookiefile': 'cookies.txt'
     }
 
