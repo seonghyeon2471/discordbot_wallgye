@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.utils import get
 import json
 import os
-import youtube_dl
+import yt_dlp as youtube_dl
 from discord import FFmpegPCMAudio
 
 intents = discord.Intents.all()
@@ -137,7 +137,11 @@ def play_next(ctx):
         return
 
     url = song_queue.pop(0)
-    ydl_opts = {'format': 'bestaudio'}
+    ydl_opts = {
+    'format': 'bestaudio/best',
+    'noplaylist': True,
+    'quiet': True
+    }
 
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
