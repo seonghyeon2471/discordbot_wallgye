@@ -135,16 +135,25 @@ async def leave_voice(ctx):
 def play_next(ctx):
     if len(song_queue) == 0:
         return
+
     url = song_queue.pop(0)
     ydl_opts = {'format': 'bestaudio'}
+
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         audio_url = info['url']
+
     ctx.voice_client.stop()
+
     ctx.voice_client.play(
-        FFmpegPCMAudio(audio_url),
+        FFmpegPCMAudio(
+            audio_url,
+            before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            options='-vn'
+        ),
         after=lambda e: play_next(ctx)
     )
+
     bot.loop.create_task(ctx.send(f"{info['title']} 재생 시작!"))
 
 @bot.command(name="play", help="유튜브 링크를 재생합니다.")
