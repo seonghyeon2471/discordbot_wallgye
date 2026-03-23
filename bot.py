@@ -140,7 +140,12 @@ def play_next(ctx):
     ydl_opts = {
     'format': 'bestaudio/best',
     'noplaylist': True,
-    'quiet': True
+    'quiet': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0'
     }
 
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
