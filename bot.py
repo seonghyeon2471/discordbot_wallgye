@@ -162,7 +162,7 @@ async def leave_voice(ctx):
     await ctx.send("음성 채널에서 나왔어요!")
 
 # ----------------------
-# 유튜브 대기열 + 제어
+# 유튜브 대기열 + 제어    -> 사용 안함 노래재생
 # ----------------------
 def play_next(ctx):
     if len(song_queue) == 0:
@@ -187,7 +187,7 @@ def play_next(ctx):
     )
     bot.loop.create_task(ctx.send(f"🎵 {title} 재생 시작!"))
 
-@bot.command(name="play", help="유튜브 링크를 재생합니다.")
+@bot.command(name="play")
 async def play(ctx, url):
     if ctx.author.voice is None:
         await ctx.send("먼저 음성 채널에 들어가 있어야 해요!")
@@ -200,7 +200,7 @@ async def play(ctx, url):
     if not ctx.voice_client.is_playing():
         play_next(ctx)
 
-@bot.command(name="stop", help="현재 재생 중인 노래를 멈춥니다.")
+@bot.command(name="stop")
 async def stop(ctx):
     if ctx.voice_client and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
@@ -209,7 +209,7 @@ async def stop(ctx):
     else:
         await ctx.send("현재 재생 중인 노래가 없어요.")
 
-@bot.command(name="skip", help="다음 노래로 넘어갑니다.")
+@bot.command(name="skip")
 async def skip(ctx):
     if ctx.voice_client and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
