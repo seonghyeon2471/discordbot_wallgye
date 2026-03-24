@@ -147,7 +147,7 @@ def play_next(ctx):
         'no_warnings': True,
         'default_search': 'auto',
         'source_address': '0.0.0.0',
-        # 'cookiefile': 'cookies.txt',  # 필요할 때만 사용
+        'cookiefile': 'cookies.txt',
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web']
