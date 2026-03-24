@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.utils import get
 import json
 import os
-import yt_dlp as youtube_dl
+import subprocess
 from discord import FFmpegPCMAudio
 
 intents = discord.Intents.all()
@@ -30,7 +30,7 @@ if os.path.exists(CONFIG_FILE):
         TARGET_STREAM_PLAN = data.get("TARGET_STREAM_PLAN")
 
 # ----------------------
-# 설정 저장
+# 설정 저장 함수
 # ----------------------
 def save_config():
     with open(CONFIG_FILE, "w") as f:
@@ -41,6 +41,26 @@ def save_config():
         }, f)
 
 # ----------------------
+# yt-dlp nightly helper
+# ----------------------
+def get_audio_url(url):
+    """yt-dlp nightly 바이너리로 audio url과 제목 가져오기"""
+    try:
+        result = subprocess.run(
+            ["./yt-dlp", "-j", "-f", "bestaudio", url],
+            capture_output=True,
+            text=True
+        )
+        info = json.loads(result.stdout)
+        # 포맷 안전하게 추출
+        audio_url = info.get('url') or (info.get('formats')[0]['url'] if info.get('formats') else None)
+        title = info.get('title', '알 수 없는 제목')
+        return audio_url, title
+    except Exception as e:
+        print("yt-dlp error:", e)
+        return None, None
+
+# ----------------------
 # 이벤트
 # ----------------------
 @bot.event
@@ -48,9 +68,9 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # ----------------------
-# 기본 명령어
+# 명령어
 # ----------------------
-@bot.command(name="채널설정")
+@bot.command(name="채널설정", help="사용할 채널을 설정합니다.")
 async def 채널설정(ctx, *, channel_name):
     global TARGET_CHANNEL_ID
     channel = get(ctx.guild.channels, name=channel_name)
@@ -61,32 +81,35 @@ async def 채널설정(ctx, *, channel_name):
     save_config()
     await ctx.send(f"채널이 <#{TARGET_CHANNEL_ID}> 로 설정되었습니다!")
 
-@bot.command(name="유튜브설정")
+@bot.command(name="유튜브설정", help="유튜브 링크를 설정합니다.")
 async def 유튜브설정(ctx, *, youtube_link):
     global TARGET_YOUTUBE_LINK
     TARGET_YOUTUBE_LINK = youtube_link
     save_config()
-    await ctx.send("유튜브 링크 설정 완료!")
+    await ctx.send(f"유튜브 링크 설정 완료!")
 
-@bot.command(name="유튜브")
+@bot.command(name="유튜브", help="유튜브 채널을 보여줍니다.")
 async def 유튜브(ctx):
-    await ctx.send(TARGET_YOUTUBE_LINK or "유튜브 링크가 설정되지 않았습니다.")
+    if TARGET_YOUTUBE_LINK:
+        await ctx.send(TARGET_YOUTUBE_LINK)
+    else:
+        await ctx.send("유튜브 링크가 설정되지 않았습니다.")
 
-@bot.command(name="방송일정설정")
+@bot.command(name="방송일정설정", help="방송 일정을 설정합니다.")
 async def 방송일정설정(ctx, *, stream_plan):
     global TARGET_STREAM_PLAN
     TARGET_STREAM_PLAN = stream_plan
     save_config()
     await ctx.send("방송 일정 설정 완료!")
 
-@bot.command(name="방송일정")
+@bot.command(name="방송일정", help="방송 일정을 확인합니다.")
 async def 방송일정(ctx):
-    await ctx.send(TARGET_STREAM_PLAN or "방송 일정이 없습니다.")
+    if TARGET_STREAM_PLAN:
+        await ctx.send(TARGET_STREAM_PLAN)
+    else:
+        await ctx.send("방송 일정이 없습니다.")
 
-# ----------------------
-# 시참 기능
-# ----------------------
-@bot.command(name="시참시작")
+@bot.command(name="시참시작", help="시참 받기를 시작합니다.")
 async def start_count(ctx):
     global counting_active, message_list, reacted_messages
     if TARGET_CHANNEL_ID is None:
@@ -97,137 +120,92 @@ async def start_count(ctx):
     reacted_messages = []
     await ctx.send("시참 시작!")
 
-@bot.command(name="시참끝")
+@bot.command(name="시참끝", help="시참 받기를 종료합니다.")
 async def stop_count(ctx):
     global counting_active
     counting_active = False
     await ctx.send("시참 종료!")
 
 # ----------------------
-# 음성 채널
+# 음성 채널 명령어
 # ----------------------
-@bot.command(name="join")
+@bot.command(name="join", help="봇을 음성채널로 데려옵니다.")
 async def join_voice(ctx):
     if ctx.author.voice is None:
         await ctx.send("먼저 음성 채널에 들어가 있어야 합니다!")
         return
-
     channel = ctx.author.voice.channel
-
-    if ctx.voice_client:
+    if ctx.voice_client is not None:
         await ctx.voice_client.move_to(channel)
     else:
         await channel.connect()
-
     await ctx.send(f"{channel.name} 채널로 들어왔어요!")
 
-@bot.command(name="exit")
+@bot.command(name="exit", help="봇을 음성채널에서 퇴장시킵니다.")
 async def leave_voice(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("음성 채널에서 나왔어요!")
-    else:
+    if ctx.voice_client is None:
         await ctx.send("저는 현재 음성 채널에 없어요.")
+        return
+    await ctx.voice_client.disconnect()
+    await ctx.send("음성 채널에서 나왔어요!")
 
 # ----------------------
-# 🎵 유튜브 재생 핵심
+# 유튜브 대기열 + 제어
 # ----------------------
 def play_next(ctx):
-    if not song_queue:
+    if len(song_queue) == 0:
         return
 
     url = song_queue.pop(0)
+    audio_url, title = get_audio_url(url)
 
-    ydl_opts = {
-        'format': 'bestaudio/best/bestaudio*',
-        'format_sort': ['abr', 'asr'],
-        'noplaylist': True,
-        'quiet': True,
-        'nocheckcertificate': True,
-        'ignoreerrors': True,
-        'no_warnings': True,
-        'default_search': 'auto',
-        'source_address': '0.0.0.0',
-        'cookiefile': 'cookies.txt',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web']
-            }
-        }
-    }
-
-    try:
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-    except Exception:
-        bot.loop.create_task(ctx.send("❌ 영상 정보를 가져오지 못했습니다. 다음 곡으로 넘어갑니다."))
-        play_next(ctx)
-        return
-
-    if info is None:
-        bot.loop.create_task(ctx.send("❌ 재생 불가 영상입니다."))
-        play_next(ctx)
-        return
-
-    if 'entries' in info:
-        info = info['entries'][0]
-        if info is None:
-            play_next(ctx)
-            return
-
-    audio_url = info.get('url') or info['formats'][0]['url']
     if not audio_url:
-        bot.loop.create_task(ctx.send("❌ 오디오 URL을 못 가져왔습니다."))
+        bot.loop.create_task(ctx.send("❌ 재생 실패, 다음 곡으로 넘어갑니다."))
         play_next(ctx)
         return
 
     ctx.voice_client.stop()
 
-    source = FFmpegPCMAudio(
-        audio_url,
-        before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -reconnect_on_network_error 1',
-        options='-vn'
+    ctx.voice_client.play(
+        FFmpegPCMAudio(
+            audio_url,
+            before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            options='-vn'
+        ),
+        after=lambda e: play_next(ctx)
     )
 
-    ctx.voice_client.play(source, after=lambda e: play_next(ctx))
-
-    title = info.get('title', '알 수 없는 제목')
     bot.loop.create_task(ctx.send(f"🎵 {title} 재생 시작!"))
 
-# ----------------------
-# 🎵 명령어
-# ----------------------
-@bot.command(name="play")
-async def play(ctx, *, url):
+@bot.command(name="play", help="유튜브 링크를 재생합니다.")
+async def play(ctx, url):
     if ctx.author.voice is None:
         await ctx.send("먼저 음성 채널에 들어가 있어야 해요!")
         return
-
+    channel = ctx.author.voice.channel
     if ctx.voice_client is None:
-        await ctx.author.voice.channel.connect()
-
+        await channel.connect()
     song_queue.append(url)
-    await ctx.send(f"대기열 추가! ({len(song_queue)}곡)")
-
+    await ctx.send(f"곡이 대기열에 추가되었습니다! 총 {len(song_queue)}곡 대기 중")
     if not ctx.voice_client.is_playing():
         play_next(ctx)
 
-@bot.command(name="skip")
+@bot.command(name="stop", help="현재 재생 중인 노래를 멈춥니다.")
+async def stop(ctx):
+    if ctx.voice_client and ctx.voice_client.is_playing():
+        ctx.voice_client.stop()
+        song_queue.clear()
+        await ctx.send("재생 중인 노래를 멈추고 대기열을 초기화했습니다!")
+    else:
+        await ctx.send("현재 재생 중인 노래가 없어요.")
+
+@bot.command(name="skip", help="다음 노래로 넘어갑니다.")
 async def skip(ctx):
     if ctx.voice_client and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
-        await ctx.send("⏭ 스킵!")
+        await ctx.send("다음 노래로 넘어갑니다!")
     else:
-        await ctx.send("재생 중인 곡이 없습니다.")
-
-@bot.command(name="stop")
-async def stop(ctx):
-    if ctx.voice_client:
-        ctx.voice_client.stop()
-        song_queue.clear()
-        await ctx.send("⏹ 정지 & 대기열 초기화!")
-    else:
-        await ctx.send("재생 중이 아닙니다.")
+        await ctx.send("재생 중인 노래가 없어서 스킵할 수 없어요.")
 
 # ----------------------
 # 메시지 이벤트
@@ -237,12 +215,14 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    # 시참 메시지 처리
     if counting_active and TARGET_CHANNEL_ID and message.channel.id == TARGET_CHANNEL_ID:
         message_list.append(message)
         if len(message_list) % 4 == 0:
             await message.add_reaction("✅")
             reacted_messages.append(message)
 
+    # ⚡ 반드시 커맨드 처리
     await bot.process_commands(message)
 
 @bot.event
@@ -252,30 +232,27 @@ async def on_message_delete(message):
             message_list.remove(message)
 
 # ----------------------
-# help
+# 도움말
 # ----------------------
-@bot.command(name="help")
+@bot.command(name="help", help="사용 가능한 명령어를 표시합니다.")
 async def help_command(ctx, command_name: str = None):
     if command_name:
         command = bot.get_command(command_name)
         if command and command.help:
-            await ctx.send(f"c!{command.name} : {command.help}")
+            await ctx.send(f"**c!{command.name}** : {command.help}")
         else:
-            await ctx.send("설명 없음")
+            await ctx.send(f"명령어 `{command_name}` 에 대한 설명이 없습니다.")
         return
-
-    msg = "**명령어 목록**\n"
+    help_text = "**사용 가능한 명령어 목록**\n"
     for cmd in bot.commands:
-        if not cmd.hidden:
-            msg += f"- c!{cmd.name}\n"
-
-    await ctx.send(msg)
+        if not cmd.hidden and cmd.help:
+            help_text += f"- `c!{cmd.name}` : {cmd.help}\n"
+    await ctx.send(help_text)
 
 # ----------------------
 # 실행
 # ----------------------
 TOKEN = os.getenv("DISCORD_TOKEN")
-
 if not TOKEN:
     print("토큰 없음")
 else:
