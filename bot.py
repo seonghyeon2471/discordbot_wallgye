@@ -82,7 +82,7 @@ async def on_ready():
 # ----------------------
 # 명령어
 # ----------------------
-@bot.command(name="채널설정", help="사용할 채널을 설정합니다.")
+@bot.command(name="채널설정")  # help="사용할 채널을 설정합니다."
 async def 채널설정(ctx, *, channel_name):
     global TARGET_CHANNEL_ID
     channel = get(ctx.guild.channels, name=channel_name)
@@ -93,7 +93,7 @@ async def 채널설정(ctx, *, channel_name):
     save_config()
     await ctx.send(f"채널이 <#{TARGET_CHANNEL_ID}> 로 설정되었습니다!")
 
-@bot.command(name="유튜브설정", help="유튜브 링크를 설정합니다.")
+@bot.command(name="유튜브설정") # help="유튜브 링크를 설정합니다."
 async def 유튜브설정(ctx, *, youtube_link):
     global TARGET_YOUTUBE_LINK
     TARGET_YOUTUBE_LINK = youtube_link
@@ -107,7 +107,7 @@ async def 유튜브(ctx):
     else:
         await ctx.send("유튜브 링크가 설정되지 않았습니다.")
 
-@bot.command(name="방송일정설정", help="방송 일정을 설정합니다.")
+@bot.command(name="방송일정설정") # help="방송 일정을 설정합니다."
 async def 방송일정설정(ctx, *, stream_plan):
     global TARGET_STREAM_PLAN
     TARGET_STREAM_PLAN = stream_plan
@@ -121,7 +121,7 @@ async def 방송일정(ctx):
     else:
         await ctx.send("방송 일정이 없습니다.")
 
-@bot.command(name="시참시작", help="시참 받기를 시작합니다.")
+@bot.command(name="시참시작") # help="시참 받기를 시작합니다."
 async def start_count(ctx):
     global counting_active, message_list, reacted_messages
     if TARGET_CHANNEL_ID is None:
@@ -132,7 +132,7 @@ async def start_count(ctx):
     reacted_messages = []
     await ctx.send("시참 시작!")
 
-@bot.command(name="시참끝", help="시참 받기를 종료합니다.")
+@bot.command(name="시참끝") # help="시참 받기를 종료합니다."
 async def stop_count(ctx):
     global counting_active
     counting_active = False
