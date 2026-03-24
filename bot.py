@@ -44,22 +44,30 @@ def save_config():
 # yt-dlp nightly helper
 # ----------------------
 def get_audio_url(url):
-    """yt-dlp nightly 바이너리로 audio url과 제목 가져오기"""
     try:
         result = subprocess.run(
-            ["./yt-dlp", "-j", "-f", "bestaudio", "--cookies", "cookies.txt", "--no-warnings", "--ignore-errors", url],
+            ["./yt-dlp", "-j", "-f", "bestaudio", "--cookies", "cookies.txt", url],
             capture_output=True,
             text=True
         )
+
+        print("===== yt-dlp stdout =====")
+        print(result.stdout[:1000])  # 너무 길어서 1000자만
+        print("===== yt-dlp stderr =====")
+        print(result.stderr)
+
         if not result.stdout.strip():
             return None, None
 
         info = json.loads(result.stdout)
 
-        # 포맷 안전하게 추출
         audio_url = info.get('url') or (info.get('formats')[0]['url'] if info.get('formats') else None)
         title = info.get('title', '알 수 없는 제목')
+
+        print("audio_url:", audio_url)
+
         return audio_url, title
+
     except Exception as e:
         print("yt-dlp error:", e)
         return None, None
