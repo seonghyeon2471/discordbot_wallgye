@@ -47,7 +47,7 @@ def get_audio_url(url):
     """yt-dlp nightly 바이너리로 audio url과 제목 가져오기"""
     try:
         result = subprocess.run(
-            ["./yt-dlp", "-j", "-f", "bestaudio", "--no-warnings", "--ignore-errors", url],
+            ["./yt-dlp", "-j", "-f", "bestaudio", "--cookies", "cookies.txt", "--no-warnings", "--ignore-errors", url],
             capture_output=True,
             text=True
         )
