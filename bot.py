@@ -47,11 +47,15 @@ def get_audio_url(url):
     """yt-dlp nightly 바이너리로 audio url과 제목 가져오기"""
     try:
         result = subprocess.run(
-            ["./yt-dlp", "-j", "-f", "bestaudio", url],
+            ["./yt-dlp", "-j", "-f", "bestaudio", "--no-warnings", "--ignore-errors", url],
             capture_output=True,
             text=True
         )
+        if not result.stdout.strip():
+            return None, None
+
         info = json.loads(result.stdout)
+
         # 포맷 안전하게 추출
         audio_url = info.get('url') or (info.get('formats')[0]['url'] if info.get('formats') else None)
         title = info.get('title', '알 수 없는 제목')
@@ -165,7 +169,6 @@ def play_next(ctx):
         return
 
     ctx.voice_client.stop()
-
     ctx.voice_client.play(
         FFmpegPCMAudio(
             audio_url,
@@ -174,7 +177,6 @@ def play_next(ctx):
         ),
         after=lambda e: play_next(ctx)
     )
-
     bot.loop.create_task(ctx.send(f"🎵 {title} 재생 시작!"))
 
 @bot.command(name="play", help="유튜브 링크를 재생합니다.")
@@ -222,7 +224,6 @@ async def on_message(message):
             await message.add_reaction("✅")
             reacted_messages.append(message)
 
-    # ⚡ 반드시 커맨드 처리
     await bot.process_commands(message)
 
 @bot.event
