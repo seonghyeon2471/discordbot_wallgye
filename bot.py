@@ -139,7 +139,8 @@ def play_next(ctx):
     url = song_queue.pop(0)
 
     ydl_opts = {
-        'format': 'bestaudio',
+        'format': 'bestaudio/best/bestaudio*',
+        'format_sort': ['abr', 'asr'],
         'noplaylist': True,
         'quiet': True,
         'nocheckcertificate': True,
@@ -174,7 +175,7 @@ def play_next(ctx):
             play_next(ctx)
             return
 
-    audio_url = info.get('url')
+    audio_url = info.get('url') or info['formats'][0]['url']
     if not audio_url:
         bot.loop.create_task(ctx.send("❌ 오디오 URL을 못 가져왔습니다."))
         play_next(ctx)
