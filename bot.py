@@ -137,19 +137,41 @@ def play_next(ctx):
         return
 
     url = song_queue.pop(0)
+
     ydl_opts = {
-    'format': 'bestaudio[ext=m4a]/bestaudio/best',  # m4a가 있으면 그걸 쓰고, 없으면 bestaudio
-    'noplaylist': True,
-    'quiet': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': True,
-    'no_warnings': True,
-    'cookiefile': 'cookies.txt'
+        'format': 'bestaudio[ext=m4a]/bestaudio/best',
+        'noplaylist': True,
+        'quiet': True,
+        'nocheckcertificate': True,
+        'ignoreerrors': True,
+        'no_warnings': True,
+        'default_search': 'auto',
+        'source_address': '0.0.0.0',
+        'cookiefile': 'cookies.txt'
     }
 
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
-        audio_url = info['url']
+
+    # 🔥 1. None 체크 (이거 없으면 계속 터짐)
+    if info is None:
+        bot.loop.create_task(ctx.send("❌ 재생할 수 없는 영상입니다. 다음 곡으로 넘어갑니다."))
+        play_next(ctx)
+        return
+
+    # 🔥 2. 플레이리스트 대응
+    if 'entries' in info:
+        info = info['entries'][0]
+        if info is None:
+            play_next(ctx)
+            return
+
+    # 🔥 3. url 안전 추출
+    audio_url = info.get('url')
+    if audio_url is None:
+        bot.loop.create_task(ctx.send("❌ 오디오 URL을 가져올 수 없습니다."))
+        play_next(ctx)
+        return
 
     ctx.voice_client.stop()
 
@@ -162,7 +184,7 @@ def play_next(ctx):
         after=lambda e: play_next(ctx)
     )
 
-    bot.loop.create_task(ctx.send(f"{info['title']} 재생 시작!"))
+    bot.loop.create_task(ctx.send(f"🎵 {info.get('title', '알 수 없는 제목')} 재생 시작!"))
 
 @bot.command(name="play", help="유튜브 링크를 재생합니다.")
 async def play(ctx, url):
