@@ -5,6 +5,9 @@ import json
 import os
 import subprocess
 from discord import FFmpegPCMAudio
+import requests
+import xml.etree.ElementTree as ET
+import asyncio
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="c!", intents=intents, help_command=None)
@@ -13,6 +16,8 @@ CONFIG_FILE = "rino_config.json"
 TARGET_CHANNEL_ID = None
 TARGET_YOUTUBE_LINK = None
 TARGET_STREAM_PLAN = None
+TARGET_YOUTUBE_CHANNEL_ID = None
+LAST_VIDEO_ID = None
 counting_active = False
 
 message_list = []
@@ -28,6 +33,8 @@ if os.path.exists(CONFIG_FILE):
         TARGET_CHANNEL_ID = data.get("TARGET_CHANNEL_ID")
         TARGET_YOUTUBE_LINK = data.get("TARGET_YOUTUBE_LINK")
         TARGET_STREAM_PLAN = data.get("TARGET_STREAM_PLAN")
+        TARGET_YOUTUBE_CHANNEL_ID = data.get("TARGET_YOUTUBE_CHANNEL_ID")
+        LAST_VIDEO_ID = data.get("LAST_VIDEO_ID")
 
 # ----------------------
 # 설정 저장 함수
@@ -37,7 +44,9 @@ def save_config():
         json.dump({
             "TARGET_CHANNEL_ID": TARGET_CHANNEL_ID,
             "TARGET_YOUTUBE_LINK": TARGET_YOUTUBE_LINK,
-            "TARGET_STREAM_PLAN": TARGET_STREAM_PLAN
+            "TARGET_STREAM_PLAN": TARGET_STREAM_PLAN,
+            "TARGET_YOUTUBE_CHANNEL_ID": TARGET_YOUTUBE_CHANNEL_ID,
+            "LAST_VIDEO_ID": LAST_VIDEO_ID
         }, f)
 
 # ----------------------
@@ -73,11 +82,50 @@ def get_audio_url(url):
         return None, None
 
 # ----------------------
+# 유튜브 영상 업로드 체
+# ----------------------
+def check_youtube():
+    global LAST_VIDEO_ID
+
+    if not TARGET_YOUTUBE_CHANNEL_ID:
+        return None
+
+    url = f"https://www.youtube.com/feeds/videos.xml?channel_id={TARGET_YOUTUBE_CHANNEL_ID}"
+
+    try:
+        res = requests.get(url)
+        root = ET.fromstring(res.text)
+
+        namespace = {"yt": "http://www.youtube.com/xml/schemas/2015"}
+
+        entry = root.find("entry")
+        if entry is None:
+            return None
+
+        video_id = entry.find("yt:videoId", namespace).text
+        title = entry.find("title").text
+
+        if LAST_VIDEO_ID != video_id:
+            LAST_VIDEO_ID = video_id
+            save_config()
+
+            return {
+                "title": title,
+                "url": f"https://youtu.be/{video_id}"
+            }
+
+    except Exception as e:
+        print("유튜브 체크 오류:", e)
+
+    return None
+
+# ----------------------
 # 이벤트
 # ----------------------
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
+    bot.loop.create_task(youtube_loop())
 
 # ----------------------
 # 명령어
@@ -93,12 +141,21 @@ async def 채널설정(ctx, *, channel_name):
     save_config()
     await ctx.send(f"채널이 <#{TARGET_CHANNEL_ID}> 로 설정되었습니다!")
 
-@bot.command(name="유튜브설정") # help="유튜브 링크를 설정합니다."
+@bot.command(name="유튜브설정")
 async def 유튜브설정(ctx, *, youtube_link):
-    global TARGET_YOUTUBE_LINK
+    global TARGET_YOUTUBE_LINK, TARGET_YOUTUBE_CHANNEL_ID
+
     TARGET_YOUTUBE_LINK = youtube_link
-    save_config()
-    await ctx.send(f"유튜브 링크 설정 완료!")
+
+    # 🔥 채널 ID 자동 추출
+    channel_id = get_channel_id_from_url(youtube_link)
+
+    if channel_id:
+        TARGET_YOUTUBE_CHANNEL_ID = channel_id
+        save_config()
+        await ctx.send(f"✅ 설정 완료!\n채널 ID: {channel_id}")
+    else:
+        await ctx.send("❌ 채널 ID 추출 실패... 링크를 다시 확인해주세요.")
 
 @bot.command(name="유튜브", help="유튜브 채널을 보여줍니다.")
 async def 유튜브(ctx):
@@ -106,6 +163,56 @@ async def 유튜브(ctx):
         await ctx.send(TARGET_YOUTUBE_LINK)
     else:
         await ctx.send("유튜브 링크가 설정되지 않았습니다.")
+
+@bot.command(name="유튜브채널설정")
+async def 유튜브채널설정(ctx, channel_id: str):
+    global TARGET_YOUTUBE_CHANNEL_ID
+
+    TARGET_YOUTUBE_CHANNEL_ID = channel_id
+    save_config()
+
+    await ctx.send(f"유튜브 채널 ID 설정 완료: {channel_id}")
+
+# ----------------------
+# 유튜브 자동 감지 루프
+# ----------------------
+async def youtube_loop():
+    await bot.wait_until_ready()
+
+    while not bot.is_closed():
+        data = check_youtube()
+
+        if data and TARGET_CHANNEL_ID:
+            channel = bot.get_channel(TARGET_CHANNEL_ID)
+
+            if channel:
+                await channel.send(
+                    f"📢 새 영상 업로드!\n"
+                    f"**{data['title']}**\n"
+                    f"{data['url']}"
+                )
+
+        await asyncio.sleep(60)  # 1분마다 체크
+
+# ----------------------
+# 채널 ID 추
+# ----------------------
+def get_channel_id_from_url(url):
+    try:
+        res = requests.get(url)
+        html = res.text
+
+        # ytInitialData에서 channelId 찾기
+        import re
+        match = re.search(r'"channelId":"(UC[\w-]+)"', html)
+
+        if match:
+            return match.group(1)
+
+    except Exception as e:
+        print("채널 ID 추출 실패:", e)
+
+    return None
 
 @bot.command(name="방송일정설정") # help="방송 일정을 설정합니다."
 async def 방송일정설정(ctx, *, stream_plan):
