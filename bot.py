@@ -18,6 +18,7 @@ TARGET_YOUTUBE_LINK = None
 TARGET_STREAM_PLAN = None
 TARGET_YOUTUBE_CHANNEL_ID = None
 LAST_VIDEO_ID = None
+YOUTUBE_CHANNEL_ID = None
 counting_active = False
 
 message_list = []
@@ -34,6 +35,7 @@ if os.path.exists(CONFIG_FILE):
         TARGET_YOUTUBE_LINK = data.get("TARGET_YOUTUBE_LINK")
         TARGET_STREAM_PLAN = data.get("TARGET_STREAM_PLAN")
         TARGET_YOUTUBE_CHANNEL_ID = data.get("TARGET_YOUTUBE_CHANNEL_ID")
+        YOUTUBE_CHANNEL_ID = data.get("YOUTUBE_CHANNEL_ID")
         LAST_VIDEO_ID = data.get("LAST_VIDEO_ID")
 
 # ----------------------
@@ -46,6 +48,7 @@ def save_config():
             "TARGET_YOUTUBE_LINK": TARGET_YOUTUBE_LINK,
             "TARGET_STREAM_PLAN": TARGET_STREAM_PLAN,
             "TARGET_YOUTUBE_CHANNEL_ID": TARGET_YOUTUBE_CHANNEL_ID,
+            "YOUTUBE_CHANNEL_ID": YOUTUBE_CHANNEL_ID,
             "LAST_VIDEO_ID": LAST_VIDEO_ID
         }, f)
 
@@ -141,6 +144,20 @@ async def 채널설정(ctx, *, channel_name):
     save_config()
     await ctx.send(f"채널이 <#{TARGET_CHANNEL_ID}> 로 설정되었습니다!")
 
+@bot.command(name="유튜브알림채널설정")  # help="유튜브 알림 채널을 설정합니다"
+async def 유튜브알림채널설정(ctx, *, channel_name):
+    global YOUTUBE_CHANNEL_ID
+    channel = get(ctx.guild.channels, name=channel_name)
+
+    if channel is None:
+        await ctx.send("채널을 찾을 수 없습니다.")
+        return
+
+    YOUTUBE_CHANNEL_ID = channel.id
+    save_config()
+
+    await ctx.send(f"유튜브 알림 채널이 {channel.mention} 로 설정되었습니다!")
+
 @bot.command(name="유튜브설정")
 async def 유튜브설정(ctx, *, youtube_link):
     global TARGET_YOUTUBE_LINK, TARGET_YOUTUBE_CHANNEL_ID
@@ -182,7 +199,7 @@ async def youtube_loop():
     while not bot.is_closed():
         data = check_youtube()
 
-        if data and TARGET_CHANNEL_ID:
+        if data and YOUTUBE_CHANNEL_ID:
             channel = bot.get_channel(TARGET_CHANNEL_ID)
 
             if channel:
