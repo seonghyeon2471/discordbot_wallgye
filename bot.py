@@ -82,7 +82,7 @@ def get_audio_url(url):
         return None, None
 
 # ----------------------
-# 유튜브 영상 업로드 체
+# 유튜브 영상 업로드 체크
 # ----------------------
 def check_youtube():
     global LAST_VIDEO_ID
