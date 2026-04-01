@@ -200,7 +200,7 @@ async def youtube_loop():
         data = check_youtube()
 
         if data and YOUTUBE_CHANNEL_ID:
-            channel = bot.get_channel(TARGET_CHANNEL_ID)
+            channel = bot.get_channel(YOUTUBE_CHANNEL_ID)
 
             if channel:
                 await channel.send(
