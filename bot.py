@@ -195,7 +195,7 @@ async def youtube_loop():
         await asyncio.sleep(60)  # 1분마다 체크
 
 # ----------------------
-# 채널 ID 추
+# 채널 ID 추가
 # ----------------------
 def get_channel_id_from_url(url):
     try:
