@@ -154,13 +154,26 @@ async def youtube_loop():
 # 채널 ID 추출
 # ----------------------
 def get_channel_id_from_url(url):
+    """
+    유튜브 @닉네임 URL에서 채널 ID(UC...) 추출
+    """
     try:
-        res = requests.get(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36"
+        }
+        res = requests.get(url, headers=headers, timeout=10)
         html = res.text
 
-        match = re.search(r'"channelId":"(UC[\w-]+)"', html)
+        # channelId를 찾는 안전한 정규식 (ytInitialData 또는 meta tag 활용)
+        match = re.search(r'"channelId":"(UC[\w-]{22})"', html)
         if match:
             return match.group(1)
+
+        # fallback: canonical link에 /channel/가 있으면
+        match2 = re.search(r'<link rel="canonical" href="https://www\.youtube\.com/channel/(UC[\w-]{22})"', html)
+        if match2:
+            return match2.group(1)
 
     except Exception as e:
         print("채널 ID 추출 실패:", e)
