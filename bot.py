@@ -243,7 +243,7 @@ def get_channel_id_from_url(url):
 # ----------------------
 # 토큰 실행
 # ----------------------
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_WALLTOKEN")
 if not TOKEN:
     print("토큰 없음")
 else:
