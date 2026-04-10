@@ -9,6 +9,9 @@ import requests
 import xml.etree.ElementTree as ET
 import asyncio
 import re
+from dotenv import load_dotenv
+
+load_dotenv()
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="c!", intents=intents, help_command=None)
