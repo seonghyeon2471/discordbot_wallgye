@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="c!", intents=intents, help_command=None)
+bot = commands.Bot(command_prefix="c!", intents=intents)
 
 CONFIG_FILE = "rino_config.json"
 TARGET_COMMAND_CHANNEL_ID = None  # 일반 명령어용 채널
