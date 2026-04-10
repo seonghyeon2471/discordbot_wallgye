@@ -347,15 +347,20 @@ async def 방송일정(ctx):
 async def help_command(ctx, cmd=None):
     if cmd:
         command = bot.get_command(cmd)
-        if command:
-            await ctx.send(f"c!{command.name} : {command.help}")
+        if command and command.help:
+            await ctx.send(f"**c!{command.name}**\n{command.help}")
         else:
-            await ctx.send("없음")
+            await ctx.send("해당 명령어 없음")
         return
 
-    text = "명령어 목록:\n"
+    text = "**📌 사용 가능한 명령어**\n"
+
     for c in bot.commands:
-        text += f"- c!{c.name}\n"
+        # help 없는 건 숨김
+        if c.help is None:
+            continue
+
+        text += f"• `c!{c.name}` : {c.help}\n"
 
     await ctx.send(text)
 
