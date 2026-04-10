@@ -295,7 +295,7 @@ async def on_message(message):
 # ----------------------
 # 음성채널
 # ----------------------
-@bot.command(name="join")
+@bot.command(name="join", help="봇을 음성채팅으로 데려오기!")
 async def join(ctx):
     if ctx.author.voice is None:
         await ctx.send("음성채널 들어가")
@@ -310,7 +310,7 @@ async def join(ctx):
 
     await ctx.send("입장 완료")
 
-@bot.command(name="exit")
+@bot.command(name="exit", help="봇을 음성채팅에서 내보내기!")
 async def exit(ctx):
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
@@ -319,7 +319,7 @@ async def exit(ctx):
 # ----------------------
 # 유튜브 링크 출력
 # ----------------------
-@bot.command(name="유튜브")
+@bot.command(name="유튜브", help="유튜브 채널 링크 불러오기!")
 async def 유튜브(ctx):
     if TARGET_YOUTUBE_LINK:
         await ctx.send(TARGET_YOUTUBE_LINK)
@@ -336,14 +336,14 @@ async def 방송일정설정(ctx, *, plan):
     save_config()
     await ctx.send("저장 완료")
 
-@bot.command(name="방송일정")
+@bot.command(name="방송일정", help="방송 일정 확인하기!")
 async def 방송일정(ctx):
     await ctx.send(TARGET_STREAM_PLAN or "없음")
 
 # ----------------------
 # help
 # ----------------------
-@bot.command(name="help")
+@bot.command(name="help", help="도움말 확인하기!")
 async def help_command(ctx, cmd=None):
     if cmd:
         command = bot.get_command(cmd)
