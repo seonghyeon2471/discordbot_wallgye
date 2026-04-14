@@ -12,8 +12,6 @@ import re
 from dotenv import load_dotenv
 import urllib.parse
 import aiohttp
-from PIL import Image, ImageEnhance
-from io import BytesIO
 
 load_dotenv()
 
@@ -38,30 +36,6 @@ counting_active = False
 
 message_list = []
 reacted_messages = []
-
-# ----------------------
-# 업스케일링
-# ----------------------
-async def upscale_image(url: str, scale: int = 4):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            img_bytes = await resp.read()
-
-    img = Image.open(BytesIO(img_bytes)).convert("RGBA")
-
-    # 업스케일
-    w, h = img.size
-    img = img.resize((w * scale, h * scale), Image.NEAREST)
-
-    # 약간 선명도 보정
-    enhancer = ImageEnhance.Sharpness(img)
-    img = enhancer.enhance(2.0)
-
-    buffer = BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-
-    return buffer
 
 # ----------------------
 # 이모지 감지
@@ -319,65 +293,63 @@ async def on_message(message):
     # =========================
     # 🔥 이모지 자동 확대 기능
     # =========================
-    
+
     # =========================
     # 1) 커스텀 이모지 (<:name:id> / <a:name:id>)
     # =========================
     custom_match = re.search(r"<a?:\w+:(\d+)>", message.content)
-    
+
     if custom_match:
         emoji_id = custom_match.group(1)
-    
+
         try:
             await message.delete()
         except:
             pass
-    
-        url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png?size=128"
-    
-        upscaled = await upscale_image(url, scale=6)
-        file = discord.File(upscaled, filename="emoji.png")
-    
+
+        url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png?size=4096&quality=lossless"
+
         embed = discord.Embed(color=discord.Color.blurple())
+
         embed.set_author(
             name=message.author.display_name,
             icon_url=getattr(message.author.avatar, "url", None)
         )
-        embed.set_image(url="attachment://emoji.png")
-    
-        await message.channel.send(embed=embed, file=file)
-    
+
+        embed.set_image(url=url)
+
+        await message.channel.send(embed=embed)
+
         await bot.process_commands(message)
         return
-    
-    
+
+
     # =========================
     # 2) 유니코드 이모지 (😂🔥 이런 것)
     # =========================
     match = EMOJI_PATTERN.search(message.content)
-    
+
     if match:
         emoji = match.group(0)
-    
+
         try:
             await message.delete()
         except:
             pass
-    
+
         url = emoji_to_twemoji_url(emoji)
-    
-        upscaled = await upscale_image(url, scale=6)
-        file = discord.File(upscaled, filename="emoji.png")
-    
+
         embed = discord.Embed(color=discord.Color.blurple())
+
         embed.set_author(
             name=message.author.display_name,
             icon_url=getattr(message.author.avatar, "url", None)
         )
-        embed.set_image(url="attachment://emoji.png")
-    
-        await message.channel.send(embed=embed, file=file)
-    
+
+        embed.set_image(url=url)
+
+        await message.channel.send(embed=embed)
+
         await bot.process_commands(message)
         return
     
