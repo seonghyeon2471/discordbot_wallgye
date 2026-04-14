@@ -344,8 +344,9 @@ async def 방송일정(ctx):
 # ----------------------
 song_queue = []
 
+
 # ----------------------
-# yt-dlp 안전 추출
+# yt-dlp 검색
 # ----------------------
 def get_info(query):
     try:
@@ -371,7 +372,7 @@ def get_info(query):
 
 
 # ----------------------
-# 오디오 URL 추출 (중요)
+# 오디오 스트림 추출
 # ----------------------
 def get_audio_url(url):
     try:
@@ -407,7 +408,7 @@ def get_audio_url(url):
 
 
 # ----------------------
-# 다음곡
+# 다음곡 자동 재생
 # ----------------------
 def play_next(ctx):
     if not ctx.voice_client:
@@ -438,7 +439,7 @@ async def play_next_async(ctx):
 
 
 # ----------------------
-# play (완전 안정 버전)
+# play (안정형 핵심)
 # ----------------------
 @bot.command(name="play")
 async def play(ctx, *, query):
@@ -474,6 +475,7 @@ async def play(ctx, *, query):
 
         vc = ctx.voice_client
 
+        # 큐 처리
         if vc.is_playing():
             song_queue.append((audio_url, title))
             await ctx.send(f"📥 큐 추가됨: {title}")
@@ -534,6 +536,7 @@ async def queue_cmd(ctx):
         msg += f"{i+1}. {title}\n"
 
     await ctx.send(msg)
+
 # ----------------------
 # help
 # ----------------------
