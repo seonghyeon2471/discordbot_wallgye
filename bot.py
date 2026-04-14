@@ -339,76 +339,72 @@ async def 방송일정설정(ctx, *, plan):
 async def 방송일정(ctx):
     await ctx.send(TARGET_STREAM_PLAN or "없음")
 
-# ----------------------
-# 음악 큐
-# ----------------------
+# ======================
+# 🎵 안정형 음악 시스템
+# ======================
+
 song_queue = []
 
+import subprocess
+import json
+import asyncio
+from discord import FFmpegPCMAudio
+
 
 # ----------------------
-# yt-dlp 검색
+# 🎧 오디오 추출 (최강 안정)
 # ----------------------
-def get_info(query):
+def get_audio(query_or_url):
     try:
+        # 1순위: SoundCloud + YouTube 검색 둘 다 지원
         result = subprocess.run(
-            ["/usr/local/bin/yt-dlp", "-j", f"ytsearch1:{query}"],
+            ["/usr/local/bin/yt-dlp", "-j", f"scsearch1:{query_or_url}"],
             capture_output=True,
             text=True
         )
 
         if not result.stdout.strip():
-            return None
+            result = subprocess.run(
+                ["/usr/local/bin/yt-dlp", "-j", f"ytsearch1:{query_or_url}"],
+                capture_output=True,
+                text=True
+            )
+
+        if not result.stdout.strip():
+            return None, None
 
         data = json.loads(result.stdout)
 
         if isinstance(data, list):
             data = data[0]
 
-        return data
+        url = data.get("webpage_url")
+        title = data.get("title", "제목 없음")
 
-    except Exception as e:
-        print("get_info error:", e)
-        return None
-
-
-# ----------------------
-# 오디오 스트림 추출
-# ----------------------
-def get_audio_url(url):
-    try:
-        result = subprocess.run(
-            ["/usr/local/bin/yt-dlp", "-f", "bestaudio", "-g", url],
-            capture_output=True,
-            text=True
-        )
-
-        audio_url = result.stdout.strip()
-
-        if not audio_url:
+        if not url:
             return None, None
 
-        meta = subprocess.run(
-            ["/usr/local/bin/yt-dlp", "-j", url],
+        # 실제 스트림 추출 (핵심 안정 옵션)
+        audio = subprocess.run(
+            ["/usr/local/bin/yt-dlp",
+             "-f", "bestaudio[ext=m4a]/bestaudio",
+             "-g", url],
             capture_output=True,
             text=True
-        )
+        ).stdout.strip()
 
-        info = json.loads(meta.stdout)
+        if not audio:
+            return None, None
 
-        if isinstance(info, list):
-            info = info[0]
-
-        title = info.get("title", "제목 없음")
-
-        return audio_url, title
+        return audio, title
 
     except Exception as e:
-        print("get_audio_url error:", e)
+        print("get_audio error:", e)
         return None, None
 
 
 # ----------------------
-# 다음곡 자동 재생
+# ▶ 다음곡
 # ----------------------
 def play_next(ctx):
     if not ctx.voice_client:
@@ -424,9 +420,9 @@ def play_next(ctx):
         asyncio.run_coroutine_threadsafe(play_next_async(ctx), bot.loop)
 
     vc.play(
-        discord.FFmpegPCMAudio(
+        FFmpegPCMAudio(
             audio,
-            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10",
             options="-vn"
         ),
         after=after_play
@@ -439,7 +435,7 @@ async def play_next_async(ctx):
 
 
 # ----------------------
-# play (안정형 핵심)
+# ▶ play
 # ----------------------
 @bot.command(name="play")
 async def play(ctx, *, query):
@@ -454,53 +450,37 @@ async def play(ctx, *, query):
 
     await ctx.send(f"🔍 검색 중: {query}")
 
-    try:
-        data = get_info(query)
+    audio, title = get_audio(query)
 
-        if not data:
-            await ctx.send("검색 실패")
-            return
+    if not audio:
+        await ctx.send("❌ 음악을 찾을 수 없음 (SoundCloud/YouTube 둘 다 실패)")
+        return
 
-        url = data.get("webpage_url")
+    vc = ctx.voice_client
 
-        if not url:
-            await ctx.send("URL 없음")
-            return
+    # 🔥 재생 중이면 큐
+    if vc.is_playing():
+        song_queue.append((audio, title))
+        await ctx.send(f"📥 큐 추가됨: {title}")
+        return
 
-        audio_url, title = get_audio_url(url)
+    def after_play(error):
+        asyncio.run_coroutine_threadsafe(play_next_async(ctx), bot.loop)
 
-        if not audio_url:
-            await ctx.send("오디오 추출 실패 (yt-dlp 차단 or 영상 문제)")
-            return
+    vc.play(
+        FFmpegPCMAudio(
+            audio,
+            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 10",
+            options="-vn"
+        ),
+        after=after_play
+    )
 
-        vc = ctx.voice_client
-
-        # 큐 처리
-        if vc.is_playing():
-            song_queue.append((audio_url, title))
-            await ctx.send(f"📥 큐 추가됨: {title}")
-            return
-
-        def after_play(error):
-            asyncio.run_coroutine_threadsafe(play_next_async(ctx), bot.loop)
-
-        vc.play(
-            discord.FFmpegPCMAudio(
-                audio_url,
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-                options="-vn"
-            ),
-            after=after_play
-        )
-
-        await ctx.send(f"🎵 재생: {title}")
-
-    except Exception as e:
-        await ctx.send(f"에러: {e}")
+    await ctx.send(f"🎵 재생: {title}")
 
 
 # ----------------------
-# stop
+# ▶ stop
 # ----------------------
 @bot.command(name="stop")
 async def stop(ctx):
@@ -511,7 +491,7 @@ async def stop(ctx):
 
 
 # ----------------------
-# skip
+# ▶ skip
 # ----------------------
 @bot.command(name="skip")
 async def skip(ctx):
@@ -523,7 +503,7 @@ async def skip(ctx):
 
 
 # ----------------------
-# queue
+# ▶ queue
 # ----------------------
 @bot.command(name="queue")
 async def queue_cmd(ctx):
