@@ -381,7 +381,7 @@ async def play(ctx, *, query):
 
     try:
         result = subprocess.run(
-            ["./yt-dlp", "-j", f"scsearch1:{query}"],
+            ["yt-dlp", "-j", f"scsearch1:{query}"],
             capture_output=True,
             text=True
         )
