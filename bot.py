@@ -292,45 +292,62 @@ async def on_message(message):
     # =========================
     # 🔥 이모지 자동 확대 기능
     # =========================
-
+    
     # 1) 커스텀 이모지 (<:name:id>)
     custom_match = re.search(r"<a?:\w+:(\d+)>", message.content)
-
+    
     if custom_match:
         emoji_id = custom_match.group(1)
-
+    
         try:
             await message.delete()
         except:
             pass
-
+    
         url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png?quality=lossless"
+    
+        embed = discord.Embed(color=discord.Color.blurple())
+    
+        # 👤 유저 정보 (카드 상단)
+        embed.set_author(
+            name=message.author.display_name,
+            icon_url=message.author.avatar.url if message.author.avatar else None
+        )
 
-        embed = discord.Embed()
+        # 🖼️ 이모지 크게
         embed.set_image(url=url)
-
+    
         await message.channel.send(embed=embed)
         return
-
+    
+    
     # 2) 유니코드 이모지 (😂🔥 이런거)
     match = EMOJI_PATTERN.search(message.content)
-
+    
     if match:
         emoji = match.group(0)
-
+    
         try:
             await message.delete()
         except:
             pass
-
+    
         url = emoji_to_twemoji_url(emoji)
-
-        embed = discord.Embed()
+    
+        embed = discord.Embed(color=discord.Color.blurple())
+    
+        # 👤 유저 정보 (카드 상단)
+        embed.set_author(
+            name=message.author.display_name,
+            icon_url=message.author.avatar.url if message.author.avatar else None
+        )
+    
+        # 🖼️ 이모지 크게
         embed.set_image(url=url)
-
+    
         await message.channel.send(embed=embed)
         return
-
+    
     # 시참
     if counting_active and TARGET_COUNT_CHANNEL_ID and message.channel.id == TARGET_COUNT_CHANNEL_ID:
         message_list.append(message)
