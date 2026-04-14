@@ -341,6 +341,104 @@ async def 방송일정(ctx):
     await ctx.send(TARGET_STREAM_PLAN or "없음")
 
 # ----------------------
+# 음성채널에서 음악 틀기
+# ----------------------
+def play_next(ctx):
+    if len(song_queue) > 0:
+        if not ctx.voice_client:
+            return
+
+        next_audio, next_title = song_queue.pop(0)
+
+        vc = ctx.voice_client
+
+        vc.play(
+            FFmpegPCMAudio(
+                next_audio,
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                options="-vn"
+            ),
+            after=lambda e: asyncio.run_coroutine_threadsafe(
+                play_next_async(ctx), bot.loop
+            )
+        )
+        
+async def play_next_async(ctx):
+    play_next(ctx)
+    
+@bot.command(name="play", help="사운드클라우드에서 노래 재생")
+async def play(ctx, *, query):
+    if ctx.author.voice is None:
+        await ctx.send("음성채널 들어가")
+        return
+
+    channel = ctx.author.voice.channel
+
+    if not ctx.voice_client:
+        await channel.connect()
+
+    await ctx.send(f"🔍 사클 검색 중: {query}")
+
+    try:
+        result = subprocess.run(
+            ["./yt-dlp", "-j", f"scsearch1:{query}"],
+            capture_output=True,
+            text=True
+        )
+
+        if not result.stdout:
+            await ctx.send("검색 결과 없음")
+            return
+
+        data = json.loads(result.stdout)
+        url = data["webpage_url"]
+        title = data.get("title", "제목 없음")
+
+        audio_url, _ = get_audio_url(url)
+
+        if not audio_url:
+            await ctx.send("오디오 추출 실패")
+            return
+
+        vc = ctx.voice_client
+
+        # 🔥 이미 재생 중이면 → 큐에 추가
+        if vc.is_playing():
+            song_queue.append((audio_url, title))
+            await ctx.send(f"📥 큐 추가됨: {title}")
+            return
+
+        # 🔥 바로 재생 + 끝나면 다음곡
+        vc.play(
+            FFmpegPCMAudio(
+                audio_url,
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                options="-vn"
+            ),
+            after=lambda e: asyncio.run_coroutine_threadsafe(
+                play_next_async(ctx), bot.loop
+            )
+        )
+
+        await ctx.send(f"🎵 재생 중: {title}")
+
+    except Exception as e:
+        await ctx.send(f"에러: {e}")
+
+@bot.command(name="stop", help="노래 정지")
+async def stop(ctx):
+    if ctx.voice_client:
+        song_queue.clear()  # 🔥 큐도 같이 비움 (중요)
+        ctx.voice_client.stop()
+        await ctx.send("⏹ 정지 완료")
+
+@bot.command(name="skip", help="노래 스킵")
+async def skip(ctx):
+    if ctx.voice_client and ctx.voice_client.is_playing():
+        ctx.voice_client.stop()
+        await ctx.send("⏭ 스킵")
+        
+# ----------------------
 # help
 # ----------------------
 @bot.command(name="help", help="도움말 확인하기!")
