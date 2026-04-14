@@ -437,7 +437,7 @@ async def play_next_async(ctx):
 # ----------------------
 # ▶ play
 # ----------------------
-@bot.command(name="play")
+@bot.command(name="play", help="노래 신청")
 async def play(ctx, *, query):
     if ctx.author.voice is None:
         await ctx.send("음성채널 들어가")
@@ -482,7 +482,7 @@ async def play(ctx, *, query):
 # ----------------------
 # ▶ stop
 # ----------------------
-@bot.command(name="stop")
+@bot.command(name="stop", help="노래 모두 종료")
 async def stop(ctx):
     if ctx.voice_client:
         song_queue.clear()
@@ -493,7 +493,7 @@ async def stop(ctx):
 # ----------------------
 # ▶ skip
 # ----------------------
-@bot.command(name="skip")
+@bot.command(name="skip", help="노래 스킵")
 async def skip(ctx):
     if ctx.voice_client:
         ctx.voice_client.stop()
@@ -505,7 +505,7 @@ async def skip(ctx):
 # ----------------------
 # ▶ queue
 # ----------------------
-@bot.command(name="queue")
+@bot.command(name="queue", help="노래 목록")
 async def queue_cmd(ctx):
     if not song_queue:
         await ctx.send("큐 비어있음")
