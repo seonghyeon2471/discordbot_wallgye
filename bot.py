@@ -345,9 +345,12 @@ async def 방송일정(ctx):
 song_queue = []
 
 
+# ----------------------
+# 안정적인 오디오 추출
+# ----------------------
 def get_audio_url(url):
-    """진짜 안정형 (무조건 이걸 써야 됨)"""
     try:
+        # 🔥 직접 스트림 (가장 안정)
         result = subprocess.run(
             ["/usr/local/bin/yt-dlp", "-f", "bestaudio", "-g", url],
             capture_output=True,
@@ -359,6 +362,7 @@ def get_audio_url(url):
         if not audio_url:
             return None, None
 
+        # 제목 가져오기
         meta = subprocess.run(
             ["/usr/local/bin/yt-dlp", "-j", url],
             capture_output=True,
@@ -376,29 +380,33 @@ def get_audio_url(url):
 
 
 # ----------------------
-# 다음곡
+# 다음곡 재생
 # ----------------------
 def play_next(ctx):
-    if not ctx.voice_client:
-        return
+    try:
+        if not ctx.voice_client:
+            return
 
-    if not song_queue:
-        return
+        if not song_queue:
+            return
 
-    next_audio, next_title = song_queue.pop(0)
-    vc = ctx.voice_client
+        next_audio, next_title = song_queue.pop(0)
+        vc = ctx.voice_client
 
-    def after_play(error):
-        asyncio.run_coroutine_threadsafe(play_next_async(ctx), bot.loop)
+        def after_play(error):
+            asyncio.run_coroutine_threadsafe(play_next_async(ctx), bot.loop)
 
-    vc.play(
-        FFmpegPCMAudio(
-            next_audio,
-            before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-            options="-vn"
-        ),
-        after=after_play
-    )
+        vc.play(
+            FFmpegPCMAudio(
+                next_audio,
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                options="-vn"
+            ),
+            after=after_play
+        )
+
+    except Exception as e:
+        print("play_next error:", e)
 
 
 async def play_next_async(ctx):
@@ -407,7 +415,7 @@ async def play_next_async(ctx):
 
 
 # ----------------------
-# play (완전 수정 버전)
+# play (완전 안정형)
 # ----------------------
 @bot.command(name="play", help="음악 재생")
 async def play(ctx, *, query):
@@ -423,9 +431,9 @@ async def play(ctx, *, query):
     await ctx.send(f"🔍 검색 중: {query}")
 
     try:
-        # 🔥 유튜브 검색 (안정적)
+        # 🔥 안정 검색 (ytsearch5)
         result = subprocess.run(
-            ["/usr/local/bin/yt-dlp", "-j", f"ytsearch1:{query}"],
+            ["/usr/local/bin/yt-dlp", "-j", f"ytsearch5:{query}"],
             capture_output=True,
             text=True
         )
@@ -454,7 +462,7 @@ async def play(ctx, *, query):
 
         vc = ctx.voice_client
 
-        # 🔥 재생 중이면 큐
+        # 🔥 재생 중이면 큐 추가
         if vc.is_playing():
             song_queue.append((audio_url, title))
             await ctx.send(f"📥 큐 추가됨: {title}")
@@ -500,7 +508,7 @@ async def skip(ctx):
 
 
 # ----------------------
-# queue 확인 (추천)
+# queue 확인
 # ----------------------
 @bot.command(name="queue")
 async def queue_cmd(ctx):
