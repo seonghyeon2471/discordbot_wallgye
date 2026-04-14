@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 import asyncio
 import re
 from dotenv import load_dotenv
+import urllib.parse
 
 load_dotenv()
 
@@ -34,6 +35,17 @@ counting_active = False
 
 message_list = []
 reacted_messages = []
+
+# ----------------------
+# 이모지 감지
+# ----------------------
+EMOJI_PATTERN = re.compile(
+    "[\U0001F300-\U0001FAFF\U00002600-\U000026FF]+"
+)
+
+def emoji_to_twemoji_url(emoji: str):
+    codepoints = "-".join(f"{ord(c):x}" for c in emoji)
+    return f"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/{codepoints}.png"
 
 # ----------------------
 # 설정 로드
@@ -275,6 +287,48 @@ async def stop_count(ctx):
 @bot.event
 async def on_message(message):
     if message.author.bot:
+        return
+
+    # =========================
+    # 🔥 이모지 자동 확대 기능
+    # =========================
+
+    # 1) 커스텀 이모지 (<:name:id>)
+    custom_match = re.search(r"<a?:\w+:(\d+)>", message.content)
+
+    if custom_match:
+        emoji_id = custom_match.group(1)
+
+        try:
+            await message.delete()
+        except:
+            pass
+
+        url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png?quality=lossless"
+
+        embed = discord.Embed()
+        embed.set_image(url=url)
+
+        await message.channel.send(embed=embed)
+        return
+
+    # 2) 유니코드 이모지 (😂🔥 이런거)
+    match = EMOJI_PATTERN.search(message.content)
+
+    if match:
+        emoji = match.group(0)
+
+        try:
+            await message.delete()
+        except:
+            pass
+
+        url = emoji_to_twemoji_url(emoji)
+
+        embed = discord.Embed()
+        embed.set_image(url=url)
+
+        await message.channel.send(embed=embed)
         return
 
     # 시참
