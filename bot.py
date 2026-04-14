@@ -316,71 +316,71 @@ async def on_message(message):
     if message.author.bot:
         return
 
-# =========================
-# 🔥 이모지 자동 확대 기능
-# =========================
-
-# =========================
-# 1) 커스텀 이모지 (<:name:id> / <a:name:id>)
-# =========================
-custom_match = re.search(r"<a?:\w+:(\d+)>", message.content)
-
-if custom_match:
-    emoji_id = custom_match.group(1)
-
-    try:
-        await message.delete()
-    except:
-        pass
-
-    url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png?size=128"
-
-    upscaled = await upscale_image(url, scale=6)
-    file = discord.File(upscaled, filename="emoji.png")
-
-    embed = discord.Embed(color=discord.Color.blurple())
-    embed.set_author(
-        name=message.author.display_name,
-        icon_url=getattr(message.author.avatar, "url", None)
-    )
-    embed.set_image(url="attachment://emoji.png")
-
-    await message.channel.send(embed=embed, file=file)
-
-    await bot.process_commands(message)
-    return
-
-
-# =========================
-# 2) 유니코드 이모지 (😂🔥 이런 것)
-# =========================
-match = EMOJI_PATTERN.search(message.content)
-
-if match:
-    emoji = match.group(0)
-
-    try:
-        await message.delete()
-    except:
-        pass
-
-    url = emoji_to_twemoji_url(emoji)
-
-    upscaled = await upscale_image(url, scale=6)
-    file = discord.File(upscaled, filename="emoji.png")
-
-    embed = discord.Embed(color=discord.Color.blurple())
-    embed.set_author(
-        name=message.author.display_name,
-        icon_url=getattr(message.author.avatar, "url", None)
-    )
-    embed.set_image(url="attachment://emoji.png")
-
-    await message.channel.send(embed=embed, file=file)
-
-    await bot.process_commands(message)
-    return
-
+    # =========================
+    # 🔥 이모지 자동 확대 기능
+    # =========================
+    
+    # =========================
+    # 1) 커스텀 이모지 (<:name:id> / <a:name:id>)
+    # =========================
+    custom_match = re.search(r"<a?:\w+:(\d+)>", message.content)
+    
+    if custom_match:
+        emoji_id = custom_match.group(1)
+    
+        try:
+            await message.delete()
+        except:
+            pass
+    
+        url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png?size=128"
+    
+        upscaled = await upscale_image(url, scale=6)
+        file = discord.File(upscaled, filename="emoji.png")
+    
+        embed = discord.Embed(color=discord.Color.blurple())
+        embed.set_author(
+            name=message.author.display_name,
+            icon_url=getattr(message.author.avatar, "url", None)
+        )
+        embed.set_image(url="attachment://emoji.png")
+    
+        await message.channel.send(embed=embed, file=file)
+    
+        await bot.process_commands(message)
+        return
+    
+    
+    # =========================
+    # 2) 유니코드 이모지 (😂🔥 이런 것)
+    # =========================
+    match = EMOJI_PATTERN.search(message.content)
+    
+    if match:
+        emoji = match.group(0)
+    
+        try:
+            await message.delete()
+        except:
+            pass
+    
+        url = emoji_to_twemoji_url(emoji)
+    
+        upscaled = await upscale_image(url, scale=6)
+        file = discord.File(upscaled, filename="emoji.png")
+    
+        embed = discord.Embed(color=discord.Color.blurple())
+        embed.set_author(
+            name=message.author.display_name,
+            icon_url=getattr(message.author.avatar, "url", None)
+        )
+        embed.set_image(url="attachment://emoji.png")
+    
+        await message.channel.send(embed=embed, file=file)
+    
+        await bot.process_commands(message)
+        return
+    
     # =========================
     # 시참 기능
     # =========================
